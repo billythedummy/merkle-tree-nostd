@@ -5,7 +5,13 @@
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
 
-pub trait Hash: Sized + Copy + Hashable + Eq {}
+pub trait Hash: Sized + Copy + Hashable {
+    fn eq<H: Hash>(&self, other: &H) -> bool {
+        self.as_bytes() == other.as_bytes()
+    }
+}
+
+impl<T> Hash for T where T: AsRef<[u8]> + Copy {}
 
 pub trait Hashable {
     fn as_bytes(&self) -> &[u8];
@@ -103,7 +109,7 @@ impl<H: Hash, A: Hasher<H>, const N: usize> MerkleTree<H, A, { N }> {
             }
             hash = hasher.finish();
         }
-        Ok(hash == self.root())
+        Ok(hash.eq(&self.root()))
     }
 
     /// Creates an iterator for the successive hashes required to verify a leaf node

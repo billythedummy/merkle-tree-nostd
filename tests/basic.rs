@@ -1,20 +1,20 @@
 #[cfg(test)]
 use merkle_tree_nostd::*;
 
+use ring::digest::Digest;
 use std::matches;
 
 mod common;
 
-use common::{DigestWrap, Sha256Context};
+use common::Sha256Context;
 
 #[test]
 fn test_depth_0() {
     const CAP: usize = 1;
-    let mt: MerkleTree<DigestWrap, Sha256Context, CAP> =
-        MerkleTree::from_slice(&["hello"]).unwrap();
+    let mt: MerkleTree<Digest, Sha256Context, CAP> = MerkleTree::from_slice(&["hello"]).unwrap();
 
     let root = b"\x2c\xf2\x4d\xba\x5f\xb0\xa3\x0e\x26\xe8\x3b\x2a\xc5\xb9\xe2\x9e\x1b\x16\x1e\x5c\x1f\xa7\x42\x5e\x73\x04\x33\x62\x93\x8b\x98\x24";
-    assert!(mt.root().as_bytes() == root.as_bytes());
+    assert!(mt.root().eq(root));
 
     assert!(mt.verify("hello", 0).unwrap());
     assert!(matches!(
@@ -31,11 +31,11 @@ fn test_depth_0() {
 #[test]
 fn test_depth_1() {
     const CAP: usize = 3;
-    let mt: MerkleTree<DigestWrap, Sha256Context, CAP> =
+    let mt: MerkleTree<Digest, Sha256Context, CAP> =
         MerkleTree::from_slice(&["hello", "world"]).unwrap();
 
     let root = b"\x73\x05\xdb\x9b\x2a\xbc\xcd\x70\x6c\x25\x6d\xb3\xd9\x7e\x5f\xf4\x8d\x67\x7c\xfe\x4d\x3a\x59\x04\xaf\xb7\xda\x0e\x39\x50\xe1\xe2";
-    assert!(mt.root().as_bytes() == root.as_bytes());
+    assert!(mt.root().eq(root));
 
     assert!(mt.verify("hello", 0).unwrap());
     assert!(mt.verify("world", 1).unwrap());
@@ -64,10 +64,10 @@ fn test_depth_4() {
         "3rf4f43rf",
         "j875um78loj6ki7t",
     ];
-    let mt: MerkleTree<DigestWrap, Sha256Context, CAP> = MerkleTree::from_slice(&data).unwrap();
+    let mt: MerkleTree<Digest, Sha256Context, CAP> = MerkleTree::from_slice(&data).unwrap();
 
     let root = b"\x6f\x52\x7e\xb5\x8e\x42\x3a\xd6\xa0\x58\x0b\xd0\x6e\xa2\xa2\x82\x6a\x3e\x5a\x8f\x73\xa2\x51\x7c\x41\x70\xa9\x35\x49\x6c\x4b\xb8";
-    assert!(mt.root().as_bytes() == root.as_bytes());
+    assert!(mt.root().eq(root));
 
     for (i, d) in data.iter().enumerate() {
         assert!(mt.verify(d, i).unwrap());
@@ -80,7 +80,7 @@ fn test_depth_4() {
 #[test]
 fn test_bounds() {
     const CAP: usize = 3;
-    let mut mt_res: Result<MerkleTree<DigestWrap, Sha256Context, CAP>, Error> =
+    let mut mt_res: Result<MerkleTree<Digest, Sha256Context, CAP>, Error> =
         MerkleTree::from_slice(&["hello"]);
     assert!(matches!(
         mt_res,
