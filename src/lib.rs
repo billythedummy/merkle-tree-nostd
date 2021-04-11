@@ -32,6 +32,7 @@ pub trait Hasher<H: Hash> {
 }
 
 /// Note N is total number of nodes in tree, not number of leaves
+/// TODO: change to number of leaves when stable rust allows const ops on const generics
 pub struct MerkleTree<H: Hash, A: Hasher<H>, const N: usize> {
     // static array containing the tree nodes (hashes)
     data: [H; N],
@@ -39,8 +40,10 @@ pub struct MerkleTree<H: Hash, A: Hasher<H>, const N: usize> {
 }
 
 impl<H: Hash, A: Hasher<H>, const N: usize> MerkleTree<H, A, { N }> {
-    pub fn from_slice<T: Hashable>(arr: &[T]) -> Result<Self, Error> {
-        let n_leaves = arr.len();
+    /// Create a new Hash tree from a slice of Hashable data
+    /// The hash of each element in `slice` form the leaf nodes
+    pub fn from_slice<T: Hashable>(slice: &[T]) -> Result<Self, Error> {
+        let n_leaves = slice.len();
         if !n_leaves.is_power_of_two() {
             return Err(Error::NotPowOf2 { n: N });
         }
@@ -57,7 +60,7 @@ impl<H: Hash, A: Hasher<H>, const N: usize> MerkleTree<H, A, { N }> {
             _hasher_phantom: PhantomData,
         };
         // Create leaf nodes
-        for (i, a) in arr.iter().enumerate() {
+        for (i, a) in slice.iter().enumerate() {
             let mut hasher = A::new();
             hasher.update(a.as_bytes());
             res.data[res.leaf_i(i)] = hasher.finish();
@@ -84,16 +87,16 @@ impl<H: Hash, A: Hasher<H>, const N: usize> MerkleTree<H, A, { N }> {
         let mut hasher = A::new();
         hasher.update(data.as_bytes());
         let mut hash = hasher.finish();
-        
+
         let verifier = self.verifier(data_i)?;
-        for (sibling_hash, is_sibling_left) in verifier {
+        for (sibling_hash, sibling_direction) in verifier {
             let mut hasher = A::new();
-            match is_sibling_left {
-                true => {
+            match sibling_direction {
+                SiblingDirection::Left => {
                     hasher.update(sibling_hash.as_bytes());
                     hasher.update(hash.as_bytes());
                 }
-                false => {
+                SiblingDirection::Right => {
                     hasher.update(hash.as_bytes());
                     hasher.update(sibling_hash.as_bytes());
                 }
@@ -103,14 +106,15 @@ impl<H: Hash, A: Hasher<H>, const N: usize> MerkleTree<H, A, { N }> {
         Ok(hash == self.root())
     }
 
+    /// Creates an iterator for the successive hashes required to verify a leaf node
     pub fn verifier(&self, data_i: usize) -> Result<MerkleTreeVerifier<H, A, N>, Error> {
         match data_i >= self.n_leaves() {
-            true => Err(Error::NoSuchleaf{ index: data_i }),
+            true => Err(Error::NoSuchleaf { index: data_i }),
             false => Ok(MerkleTreeVerifier {
                 i: self.leaf_i(data_i),
                 tree: &self,
                 _hasher_phantom: PhantomData,
-            })
+            }),
         }
     }
 
@@ -135,12 +139,17 @@ impl<H: Hash, A: Hasher<H>, const N: usize> MerkleTree<H, A, { N }> {
     /// given index of data in the data block array used to create
     #[inline(always)]
     fn leaf_i(&self, i: usize) -> usize {
-        self.data.len() / 2 + i
+        N / 2 + i
     }
 }
 
 /// verifier iterator that yields the successive hashes required to verify a leaf node
-/// and bool indicating if the sibling from which the hash was retrieved was on the left or right
+/// and enum indicating if the sibling from which the hash was retrieved was on the left or right
+
+pub enum SiblingDirection {
+    Left,
+    Right,
+}
 
 pub struct MerkleTreeVerifier<'a, H: Hash, A: Hasher<H>, const N: usize> {
     /// Index of current node we're currently examining/just hashed.
@@ -153,19 +162,19 @@ pub struct MerkleTreeVerifier<'a, H: Hash, A: Hasher<H>, const N: usize> {
 }
 
 impl<'a, H: Hash, A: Hasher<H>, const N: usize> Iterator for MerkleTreeVerifier<'a, H, A, { N }> {
-    type Item = (H, bool);
+    type Item = (H, SiblingDirection);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.i == 0 {
             return None;
         }
-        let (sibling_i, is_sibling_left) = match self.i % 2 == 0 {
-            true => (self.i - 1, true),
-            false => (self.i + 1, false),
+        let (sibling_i, sibling_direction) = match self.i % 2 == 0 {
+            true => (self.i - 1, SiblingDirection::Left),
+            false => (self.i + 1, SiblingDirection::Right),
         };
         let res = self.tree.data[sibling_i];
         self.i = self.tree.parent_i(self.i);
-        Some((res, is_sibling_left))
+        Some((res, sibling_direction))
     }
 }
 
