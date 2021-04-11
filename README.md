@@ -3,7 +3,7 @@
 Simple `no_std` traits for implementing merkle trees. A weekend project used to explore generics and the newfangled const generics.
 # Use
 
-Implement the `Hasher` trait, which is designed to work with [ring](https://crates.io/crates/ring)'s `digest` interface. Example using `ring` in [tests/common.rs](tests/common.rs).
+Implement the `Hasher` trait, which is designed to work with openssl or [ring](https://crates.io/crates/ring)'s `digest` interface. Example using `ring` in [tests/common.rs](tests/common.rs).
 
 ## Features:
 - no_std

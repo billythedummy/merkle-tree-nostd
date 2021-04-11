@@ -13,6 +13,9 @@ fn test_depth_0() {
     let mt: MerkleTree<DigestWrap, Sha256Context, CAP> =
         MerkleTree::from_slice(&["hello"]).unwrap();
 
+    let root = b"\x2c\xf2\x4d\xba\x5f\xb0\xa3\x0e\x26\xe8\x3b\x2a\xc5\xb9\xe2\x9e\x1b\x16\x1e\x5c\x1f\xa7\x42\x5e\x73\x04\x33\x62\x93\x8b\x98\x24";
+    assert!(mt.root().as_bytes() == root.as_bytes());
+
     assert!(mt.verify("hello", 0).unwrap());
     assert!(matches!(
         mt.verify("hello", 1),
@@ -30,6 +33,9 @@ fn test_depth_1() {
     const CAP: usize = 3;
     let mt: MerkleTree<DigestWrap, Sha256Context, CAP> =
         MerkleTree::from_slice(&["hello", "world"]).unwrap();
+
+    let root = b"\x73\x05\xdb\x9b\x2a\xbc\xcd\x70\x6c\x25\x6d\xb3\xd9\x7e\x5f\xf4\x8d\x67\x7c\xfe\x4d\x3a\x59\x04\xaf\xb7\xda\x0e\x39\x50\xe1\xe2";
+    assert!(mt.root().as_bytes() == root.as_bytes());
 
     assert!(mt.verify("hello", 0).unwrap());
     assert!(mt.verify("world", 1).unwrap());
@@ -59,6 +65,10 @@ fn test_depth_4() {
         "j875um78loj6ki7t",
     ];
     let mt: MerkleTree<DigestWrap, Sha256Context, CAP> = MerkleTree::from_slice(&data).unwrap();
+
+    let root = b"\x6f\x52\x7e\xb5\x8e\x42\x3a\xd6\xa0\x58\x0b\xd0\x6e\xa2\xa2\x82\x6a\x3e\x5a\x8f\x73\xa2\x51\x7c\x41\x70\xa9\x35\x49\x6c\x4b\xb8";
+    assert!(mt.root().as_bytes() == root.as_bytes());
+
     for (i, d) in data.iter().enumerate() {
         assert!(mt.verify(d, i).unwrap());
         if i + 1 < mt.n_leaves() {
